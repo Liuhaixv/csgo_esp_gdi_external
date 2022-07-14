@@ -96,7 +96,7 @@ struct Vector3 WorldToScreen(const struct Vector3 pos, struct view_matrix_t matr
 
 void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head, int health, uintptr_t pEnt) {
 	float height = head.y - foot.y;
-	float width = height / 2.4f;
+	float width = height / 2.4f;//72.f / 2.4f = 
 	SelectObject(hdc, BoxPen);
 	Rectangle(hdc, foot.x - (width / 2), foot.y, head.x + (width / 2), head.y);
 
@@ -169,7 +169,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			if (team != localteam) {
 				int health = RPM<int>(pEnt + m_iHealth);
 				Vector3 pos = RPM<Vector3>(pEnt + m_vecOrigin);
-				Vector3 head; head.x = pos.x; head.y = pos.y; head.z = pos.z + 72.f;
+				Vector3 head; 
+				head.x = pos.x; head.y = pos.y; head.z = pos.z + 72.f;
 				Vector3 screenpos = WorldToScreen(pos, vm);
 				Vector3 screenhead = WorldToScreen(head, vm);
 				float height = screenhead.y - screenpos.y;
