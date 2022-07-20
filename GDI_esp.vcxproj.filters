@@ -18,9 +18,42 @@
     <ClInclude Include="signatures.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="nav_mesh_parser\micropather.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_mesh_parser\nav_area.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_mesh_parser\nav_buffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_mesh_parser\nav_file.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_mesh_parser\nav_hiding_spot.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_mesh_parser\nav_structs.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="repair.cpp">
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_mesh_parser\micropather.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_mesh_parser\nav_area.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_mesh_parser\nav_buffer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_mesh_parser\nav_file.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_mesh_parser\nav_hiding_spot.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

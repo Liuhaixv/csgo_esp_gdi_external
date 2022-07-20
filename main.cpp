@@ -3,7 +3,9 @@
 #include <TlHelp32.h>
 #include<string>
 #include<cmath>
+#include <gdiplus.h>
 #include"signatures.hpp"
+#include"nav_mesh_parser/nav_file.h"
 
 #define PI 3.14159265358979323846
 
@@ -11,12 +13,15 @@
 Make sure character set is 'Multi-Byte' in project settings! And game must be windowed fullscreen.
 Updated offsets: https://github.com/frk1/hazedumper/blob/master/csgo.cs     */
 
+using namespace nav_mesh;
 using namespace offsets;
+//using namespace Gdiplus;
 
 uintptr_t clientBase;
 uintptr_t engineBase;
 HANDLE TargetProcess;
 HPEN BoxPen = CreatePen(PS_SOLID, 1, RGB(255, 0, 0));
+HPEN PathPen = CreatePen(PS_SOLID, 3, RGB(255, 0, 255));
 RECT WBounds;
 HWND EspHWND;
 
@@ -73,7 +78,33 @@ static DWORD GetProcId(const std::string_view targetProcess) {
 }
 
 struct Vector3 {
+public:
 	float x, y, z;
+
+	Vector3() {
+
+	}
+
+	Vector3(float _x, float _y, float _z) {
+		x = _x;
+		y = _y;
+		z = _z;
+	}
+
+	Vector3(vec3_t v3_t) {
+		Vector3(v3_t.x, v3_t.y, v3_t.z);
+	}
+
+	std::string str() {
+		std::string ret_str = ("{");
+		ret_str +=std::to_string(x);
+		ret_str +=", ";
+		ret_str += std::to_string(y);
+		ret_str += ", ";
+		ret_str += std::to_string(z);
+			ret_str += "}";
+			return ret_str;
+	}
 };
 
 struct view_matrix_t {
@@ -85,6 +116,7 @@ struct Vector3 WorldToScreen(const struct Vector3 pos, struct view_matrix_t matr
 	float _x = matrix.matrix[0] * pos.x + matrix.matrix[1] * pos.y + matrix.matrix[2] * pos.z + matrix.matrix[3];
 	float _y = matrix.matrix[4] * pos.x + matrix.matrix[5] * pos.y + matrix.matrix[6] * pos.z + matrix.matrix[7];
 	out.z = matrix.matrix[12] * pos.x + matrix.matrix[13] * pos.y + matrix.matrix[14] * pos.z + matrix.matrix[15];
+
 
 	_x *= 1.f / out.z;
 	_y *= 1.f / out.z;
@@ -111,6 +143,43 @@ float angleOfTwoVector3(Vector3 a, Vector3 b) {
 	return acos(ab / ab2) * 180 / PI;
 }
 
+/*
+Vector3 getAimPunch()
+{
+	Vector3 aimPunch = memory->read<Vector3>(base + offsets::m_aimPunchAngle);
+	return aimPunch;
+}
+
+Vector3 aimAnglesTo(BaseEntity& localPlayer, Vector3& target)
+{
+	Vector3 localPosition = localPlayer.getAbsolutePosition();
+
+	Vector3 punchAngles = localPlayer.getAimPunch();
+
+	Vector3 dPosition = localPosition - target;
+
+	double hypotenuse = sqrt(dPosition(0) * dPosition(0) + dPosition(1) * dPosition(1));
+
+	Vector3 a((float)(atan2f(dPosition(2), hypotenuse) * 57.295779513082f), (float)(atanf(dPosition(1) / dPosition(0)) * 57.295779513082f), 0);
+
+	if (dPosition(0) >= 0.f)
+		a(1) += 180.0f;
+
+	Vector3 aimAngles;
+	aimAngles(0) = a(0);     // up and down
+	aimAngles(1) = a(1);      // left and right
+
+	aimAngles(0) -= punchAngles(0) * 2;
+	aimAngles(1) -= punchAngles(1) * 2;
+
+	normalizeAngles(aimAngles);
+	clampAngles(aimAngles);
+
+	aimAngles(2) = 0.f;
+	return aimAngles;
+}
+*/
+
 uintptr_t get_local_player() {
 	DWORD clientState = RPM<DWORD>(engineBase + offsets::dwClientState);
 	DWORD player_id = RPM<DWORD>(clientState + offsets::dwClientState_GetLocalPlayer);
@@ -130,6 +199,27 @@ Vector3 getPosition(uintptr_t playerEnt) {
 	return RPM<Vector3>((playerEnt + offsets::m_vecOrigin));
 }
 
+void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head, int health) {
+	float height = head.y - foot.y;
+	float width = height / 2.4f;//72.f / 2.4f = 
+	SelectObject(hdc, BoxPen);
+	Rectangle(hdc, foot.x - (width / 2), foot.y, head.x + (width / 2), head.y);
+
+	std::string health_str = std::string("health:");
+	health_str += std::to_string(health);
+
+
+	std::string dormant_str = std::string("dormant:");
+	dormant_str += "不指定dormant";
+
+	auto raw_color = GetTextColor(hdc);
+
+	SetTextColor(hdc, RGB(0, 255, 0));
+	TextOutA(hdc, foot.x - (width / 2), foot.y, health_str.c_str(), health_str.size());
+	TextOutA(hdc, foot.x - (width / 2), foot.y + 20, dormant_str.c_str(), dormant_str.size());
+
+	SetTextColor(hdc, raw_color);
+}
 
 void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head, int health, uintptr_t pEnt) {
 	float height = head.y - foot.y;
@@ -153,23 +243,6 @@ void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head, int health, uintptr_t pEnt)
 	SetTextColor(hdc, raw_color);
 }
 
-void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head, int health) {
-	float height = head.y - foot.y;
-	float width = height / 2.4f;
-	SelectObject(hdc, BoxPen);
-	Rectangle(hdc, foot.x - (width / 2), foot.y, head.x + (width / 2), head.y);
-
-	std::string health_str = std::string("health:");
-	health_str += std::to_string(health);
-
-
-	auto raw_color = GetTextColor(hdc);
-
-	SetTextColor(hdc, RGB(0, 255, 0));
-	TextOutA(hdc, foot.x - (width / 2), foot.y, health_str.c_str(), health_str.size());
-
-	SetTextColor(hdc, raw_color);
-}
 
 void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head) {
 	float height = head.y - foot.y;
@@ -178,28 +251,6 @@ void DrawPlayer(HDC hdc, Vector3 foot, Vector3 head) {
 	Rectangle(hdc, foot.x - (width / 2), foot.y, head.x + (width / 2), head.y);
 }
 
-void DrawPlayerScreenDistanceToCrosshair(HDC hdc, Vector3 foot, Vector3 head, uintptr_t player) {
-	auto raw_color = GetTextColor(hdc);
-	SetTextColor(hdc, RGB(0, 255, 0));
-
-	Vector3 crosshair = Vector3(2560/ 2, 1440/ 2,  0);
-
-	//敌人位置
-	Vector3 player_position = getPosition(player);
-
-	Vector3 player_position_screen = WorldToScreen(player_position, RPM<view_matrix_t>(clientBase + dwViewMatrix));
-
-	float crosshair_distance_to_player = sqrt(pow(player_position_screen.x - crosshair.x, 2) + pow(player_position_screen.y - crosshair.y, 2));
-	
-	std::string crosshair_distance_to_player_str = std::string("distance_to_crosshair: ") + std::to_string(crosshair_distance_to_player);
-
-	TextOutA(hdc, foot.x, foot.y, crosshair_distance_to_player_str.c_str(), crosshair_distance_to_player_str.size());
-
-
-
-	SetTextColor(hdc, raw_color);
-}
-/*
 void DrawPlayerAngleToLocalPlayer(HDC hdc, Vector3 foot, Vector3 head, uintptr_t player) {
 	auto raw_color = GetTextColor(hdc);
 	SetTextColor(hdc, RGB(0, 255, 0));
@@ -211,7 +262,6 @@ void DrawPlayerAngleToLocalPlayer(HDC hdc, Vector3 foot, Vector3 head, uintptr_t
 	//敌人眼球位置
 	Vector3 player_position = getPosition(player);
 	Vector3 local_player_view_position = getViewPosition(get_local_player());
-	local_player_view_position.z;
 
 	DWORD clst = RPM<DWORD>(engineBase + offsets::dwClientState);
 	//Vector3 view_angles = Vector3(0, 90, 0);
@@ -261,7 +311,85 @@ void DrawPlayerAngleToLocalPlayer(HDC hdc, Vector3 foot, Vector3 head, uintptr_t
 
 
 	SetTextColor(hdc, raw_color);
-}*/
+}
+void aim_at(Vector3 point) {
+	// pitch - point at Y axis in [-89, 89] degrees range - arcsin of Z coord and hypotenuse
+	// yaw - point at X axis in [-180, 180] degrees range
+	DWORD clst = RPM<DWORD>(engineBase + offsets::dwClientState);
+	Vector3 view_angles = RPM<Vector3>(clst + offsets::dwClientState_ViewAngles);
+
+	Vector3 position = RPM<Vector3>(get_local_player() + m_vecOrigin);
+	Vector3 view_point = RPM<Vector3>(get_local_player() + offsets::m_vecViewOffset);
+	Vector3 view_pos( position.x + view_point.x, position.y + view_point.y, position.z + view_point.z );
+
+	Vector3 delta( point.x - view_pos.x, point.y - view_pos.y, point.z - view_pos.z ); // Y distance between local player view offset (eyes position) and point operand
+	float delta_len = (float)sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z); // distance between two points (hypotenuse)
+
+	float pitch = (float)-asin(delta.z / delta_len) * (180 / (float)PI); // -asin because 89 deg is floor and -89 deg is ceil
+	float yaw = (float)atan2(delta.y, delta.x) * (180 / (float)PI);
+
+	if (pitch >= -89 && pitch <= 89 && yaw >= -180 && yaw <= 180) {
+		view_angles.x = pitch; // / smoothing;
+		view_angles.y = yaw; // / smoothing;
+	}
+
+	WPM<Vector3>(clst + offsets::dwClientState_ViewAngles, view_angles);
+}
+void DrawNavPathBetweenCtAndTInDe_dust2(HDC hdc, view_matrix_t view_matrix) {
+	static std::vector<vec3_t> paths;
+	 static time_t last_calculate_path_time = 0;
+	try {
+		time_t current_time = time(NULL);
+
+		if (current_time - last_calculate_path_time >= 2) {
+
+			nav_mesh::nav_file map_nav("F:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/csgo/maps/de_dust2.nav");
+			//Alternatively, you can just call map_nav.load( "path/to/map.nav" );
+
+			Vector3 start_vector3 = RPM<Vector3>(get_local_player() + m_vecOrigin);
+			vec3_t start = vec3_t(start_vector3.x, start_vector3.y, start_vector3.z);
+			//vec3_t start = vec3_t(-1829.344849, 631.993713, 96.551422);
+			vec3_t end = vec3_t(1051.031250, 3059.968750, 195.214279);
+
+			paths = map_nav.find_path(start, end);
+			//Figure out from where to where you'd like to find a path
+
+
+			//打印路径
+			for (auto p : paths) {
+				std::cout << "setpos " << p.x << " " << p.y << " " << p.z << std::endl;
+			}
+			last_calculate_path_time = current_time;
+		}	
+	}
+	catch (const std::exception& e) {
+		std::cout << e.what() << std::endl;
+		//throw(e);
+	}
+
+	//连线路径点并转换为屏幕坐标，绘制线
+
+	SelectObject(hdc, PathPen);		//将画板放入画板
+
+
+	
+	for (int i = 0; i < paths.size() - 1; i++) {
+		Vector3 a = Vector3(paths[i].x, paths[i].y, paths[i].z);
+		Vector3 b = Vector3(paths[i+1].x, paths[i + 1].y, paths[i + 1].z);
+
+		auto screenPoint_a = WorldToScreen(a, view_matrix);
+		auto screenPoint_b = WorldToScreen(b, view_matrix);
+
+		if (screenPoint_a.z < 0.01f || screenPoint_b.z < 0.01f) {
+			continue;
+		}
+
+		MoveToEx(hdc, screenPoint_a.x, screenPoint_a.y, NULL);
+		LineTo(hdc, screenPoint_b.x, screenPoint_b.y);
+	}
+}
+
+
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
@@ -280,9 +408,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		SelectObject(Memhdc, Membitmap);
 		FillRect(Memhdc, &WBounds, WHITE_BRUSH);
 
+		//On draw
 
 		view_matrix_t vm = RPM<view_matrix_t>(clientBase + dwViewMatrix);
 		int localteam = RPM<int>(RPM<DWORD>(clientBase + dwEntityList) + m_iTeamNum);
+			
+		DrawNavPathBetweenCtAndTInDe_dust2(Memhdc, vm);
 
 		for (int i = 1; i < 64; i++) {
 			uintptr_t pEnt = RPM<DWORD>(clientBase + dwEntityList + (i * 0x10));
@@ -299,11 +430,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				float width = height / 2.4f;
 
 				if (screenpos.z >= 0.01f && health > 0 && health < 101 && !RPM<bool>(pEnt + m_bDormant)) {
-					DrawPlayer(Memhdc, screenpos, screenhead, health, pEnt);
-					DrawPlayerScreenDistanceToCrosshair(Memhdc, screenpos, screenhead, pEnt);
+					//std::cout << pos.str() << std::endl;
+					//DrawPlayer(Memhdc, screenpos, screenhead, health, pEnt);
+					//DrawPlayerAngleToLocalPlayer(Memhdc, screenpos, screenhead, pEnt);
 				}
 			}
 		}
+
+		//End draw
 
 
 		BitBlt(hdc, 0, 0, win_width, win_height, Memhdc, 0, 0, SRCCOPY);

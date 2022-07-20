@@ -129,10 +129,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="nav_mesh_parser\micropather.h" />
+    <ClInclude Include="nav_mesh_parser\nav_area.h" />
+    <ClInclude Include="nav_mesh_parser\nav_buffer.h" />
+    <ClInclude Include="nav_mesh_parser\nav_file.h" />
+    <ClInclude Include="nav_mesh_parser\nav_hiding_spot.h" />
+    <ClInclude Include="nav_mesh_parser\nav_structs.h" />
     <ClInclude Include="signatures.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="repair.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="nav_mesh_parser\micropather.cpp" />
+    <ClCompile Include="nav_mesh_parser\nav_area.cpp" />
+    <ClCompile Include="nav_mesh_parser\nav_buffer.cpp" />
+    <ClCompile Include="nav_mesh_parser\nav_file.cpp" />
+    <ClCompile Include="nav_mesh_parser\nav_hiding_spot.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
