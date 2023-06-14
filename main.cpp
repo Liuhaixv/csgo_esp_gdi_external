@@ -72,7 +72,12 @@ static DWORD GetProcId(const std::string_view targetProcess) {
 			} while (Process32Next(hSnap, &procEntry));
 		}
 	}
-	CloseHandle(hSnap);
+	try {
+		CloseHandle(hSnap);
+	}
+	catch (...) {
+		std::cout << "Close Handle failed";
+	}
 
 	return procId;
 }
@@ -341,9 +346,12 @@ void DrawNavPathBetweenCtAndTInDe_dust2(HDC hdc, view_matrix_t view_matrix) {
 	try {
 		time_t current_time = time(NULL);
 
+		//重新计算并绘制路径的时间间隔
 		if (current_time - last_calculate_path_time >= 2) {
 
-			nav_mesh::nav_file map_nav("F:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/csgo/maps/de_dust2.nav");
+			//nav_mesh::nav_file map_nav("D:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/csgo/maps/de_dust2.nav");
+			static nav_mesh::nav_file map_nav("./nav/de_dust2.nav");
+
 			//Alternatively, you can just call map_nav.load( "path/to/map.nav" );
 
 			Vector3 start_vector3 = RPM<Vector3>(get_local_player() + m_vecOrigin);
@@ -419,7 +427,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			uintptr_t pEnt = RPM<DWORD>(clientBase + dwEntityList + (i * 0x10));
 			int team = RPM<int>(pEnt + m_iTeamNum);
 
-			if (team != localteam) {
+			bool onlyDrawEnemy = false;
+
+			bool isEnemy = team != localteam;
+			//只绘制敌方
+			if (onlyDrawEnemy && isEnemy || !onlyDrawEnemy) {
 				int health = RPM<int>(pEnt + m_iHealth);
 				Vector3 pos = RPM<Vector3>(pEnt + m_vecOrigin);
 				Vector3 head; 
@@ -431,8 +443,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 				if (screenpos.z >= 0.01f && health > 0 && health < 101 && !RPM<bool>(pEnt + m_bDormant)) {
 					//std::cout << pos.str() << std::endl;
-					//DrawPlayer(Memhdc, screenpos, screenhead, health, pEnt);
-					//DrawPlayerAngleToLocalPlayer(Memhdc, screenpos, screenhead, pEnt);
+					DrawPlayer(Memhdc, screenpos, screenhead, health, pEnt);
+					DrawPlayerAngleToLocalPlayer(Memhdc, screenpos, screenhead, pEnt);
 				}
 			}
 		}
@@ -479,7 +491,7 @@ int main() {
 
 	WNDCLASSEX WClass;
 	MSG Msg;
-	WClass.cbSize = sizeof(WNDCLASSEX);
+	WClass.cbSize = sizeof(WClass);
 	WClass.style = NULL;
 	WClass.lpfnWndProc = WndProc;
 	WClass.cbClsExtra = NULL;
